@@ -1,11 +1,15 @@
 #include <ctype.h>
+#include <errno.h>
 #include <termios.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <unistd.h>
 
 #include "tshoo_line_struct.h"
+
+static volatile sig_atomic_t	got_sigint = 0;
 
 typedef struct termios		t_settings;
 
@@ -109,19 +113,54 @@ static void	backspace_handling(t_rl *rl) {
 	write(2, "\x08\x1b[K", 4);
 }
 
+typedef struct sigaction	t_sigaction;
+
+void	line_sigint(int sig) {
+	(void)sig;
+	got_sigint = 1;
+}
+
+void	setup_signals(t_sigaction *old, t_sigaction *sa) {
+	sa->sa_handler = line_sigint;
+	sigemptyset(&sa->sa_mask);
+	sa->sa_flags = 0;
+	sigaction(SIGINT, sa, old);
+}
+
+void	control_c(t_rl *rl) {
+	int	temp = rl->i;
+
+	while (temp > 0) {
+		write(2, "\x1b[D", 3);
+		temp--;
+	}
+	dprintf(2, "\x1b[%ldP", strlen(rl->line));
+	rl->line[0] = '\0';
+	rl->i = 0;
+	rl->len = 0;
+	got_sigint = 0;
+}
+
 char	*tshoo_line(char const *prompt, t_tshoo_hist *history) {
+	t_sigaction	old;
+	t_sigaction	sa;
 	t_settings	original;
 	char		c;
 	t_rl		rl;
+	ssize_t		bytes_read;
 
+	setup_signals(&old, &sa);
 	enable_raw_mode(&original);
 	write(2, prompt, strlen(prompt));
 	rl.i = 0;
 	rl.len = 0;
 	rl.line[0] = '\0';
 	while (1) {
-		if (read(0, &c, 1) == 0)
+		bytes_read = read(0, &c, 1);
+		if (bytes_read == 0)
 			continue ;
+		else if (bytes_read < 0 && errno == EINTR && got_sigint)
+			control_c(&rl);
 		else if (c == '\r' || rl.len == 1023)
 			break ;
 		else if (c == '\x7f')
@@ -136,5 +175,6 @@ char	*tshoo_line(char const *prompt, t_tshoo_hist *history) {
 	rl.line[rl.len] = '\0';
 	write(2, "\r\v", 2);
 	disable_raw_mode(&original);
+	sigaction(SIGINT, &old, NULL);
 	return (strdup(rl.line));
 }

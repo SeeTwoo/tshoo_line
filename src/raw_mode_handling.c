@@ -26,10 +26,11 @@ void	enable_raw_mode(t_settings *original) {
 
 	tcgetattr(STDIN_FILENO, original);
 	raw = *original;
-	raw.c_lflag &= ~(ECHO | ICANON | ISIG);
+	raw.c_lflag &= ~(ECHO | ICANON);
 	raw.c_iflag &= ~(ICRNL | IXON);
 	raw.c_oflag &= ~(OPOST);
 	raw.c_cflag |= (CS8);
+	raw.c_lflag |= (ISIG);
 	raw.c_cc[VMIN] = 0;
 	raw.c_cc[VTIME] = 1;
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
