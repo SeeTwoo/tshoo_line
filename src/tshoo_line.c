@@ -12,6 +12,14 @@
 static volatile sig_atomic_t	got_sigint = 0;
 
 typedef struct termios		t_settings;
+typedef struct sigaction	t_sigaction;
+typedef struct s_ctxt		t_ctxt;
+
+struct s_ctxt {
+	struct termios		termios;
+	struct sigaction	sa;
+	struct sigaction	old_sa;
+};
 
 void	enable_raw_mode(t_settings *original);
 void	disable_raw_mode(t_settings *original);
@@ -120,7 +128,6 @@ static void	backspace_handling(t_rl *rl) {
 	write(2, "\x08\x1b[K", 4);
 }
 
-typedef struct sigaction	t_sigaction;
 
 void	line_sigint(int sig) {
 	(void)sig;
@@ -139,23 +146,34 @@ void	control_c(t_rl *rl) {
 	got_sigint = 0;
 }
 
-char	*tshoo_line(char const *prompt, t_tshoo_hist *history) {
-	t_sigaction	old;
-	t_sigaction	sa;
-	t_settings	original;
-	char		c;
-	t_rl		rl;
-	ssize_t		bytes_read;
-
-	setup_signals(&old, &sa);
-	enable_raw_mode(&original);
+void	setup(t_rl *rl, t_ctxt *ctxt, char const *prompt) {
+	setup_signals(&(ctxt->old_sa), &(ctxt->sa));
+	enable_raw_mode(&(ctxt->termios));
 	write(2, prompt, strlen(prompt));
-	rl.i = 0;
-	rl.len = 0;
-	rl.line[0] = '\0';
+	rl->i = 0;
+	rl->len = 0;
+	rl->line[0] = '\0';
+}
+
+void	cleanup(t_rl *rl, t_ctxt *ctxt) {
+	rl->line[rl->len] = '\0';
+	write(2, "\r\v", 2);
+	disable_raw_mode(&(ctxt->termios));
+	sigaction(SIGINT, &(ctxt->old_sa), NULL);
+}
+
+char	*tshoo_line(char const *prompt, t_tshoo_hist *history) {
+	t_ctxt	ctxt;
+	char	c;
+	t_rl	rl;
+	ssize_t	bytes_read;
+
+	setup(&rl, &ctxt, prompt);
 	while (1) {
 		bytes_read = read(0, &c, 1);
-		if (bytes_read == 0)
+		if (c == '\x4' && rl.len == 0)
+			return (cleanup(&rl, &ctxt), NULL);
+		else if (bytes_read == 0 || c == '\x4')
 			continue ;
 		else if (bytes_read < 0 && errno == EINTR && got_sigint)
 			control_c(&rl);
@@ -170,9 +188,6 @@ char	*tshoo_line(char const *prompt, t_tshoo_hist *history) {
 		else
 			fill_line(&rl, c);
 	}
-	rl.line[rl.len] = '\0';
-	write(2, "\r\v", 2);
-	disable_raw_mode(&original);
-	sigaction(SIGINT, &old, NULL);
+	cleanup(&rl, &ctxt);
 	return (strdup(rl.line));
 }
