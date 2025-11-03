@@ -128,25 +128,24 @@ static void	backspace_handling(t_rl *rl) {
 	write(2, "\x08\x1b[K", 4);
 }
 
+static void	control_c(t_rl *rl) {
+	replace_line(rl, "");
+	got_sigint = 0;
+}
 
-void	line_sigint(int sig) {
+static void	line_sigint(int sig) {
 	(void)sig;
 	got_sigint = 1;
 }
 
-void	setup_signals(t_sigaction *old, t_sigaction *sa) {
+static void	setup_signals(t_sigaction *old, t_sigaction *sa) {
 	sa->sa_handler = line_sigint;
 	sigemptyset(&sa->sa_mask);
 	sa->sa_flags = 0;
 	sigaction(SIGINT, sa, old);
 }
 
-void	control_c(t_rl *rl) {
-	replace_line(rl, "");
-	got_sigint = 0;
-}
-
-void	setup(t_rl *rl, t_ctxt *ctxt, char const *prompt) {
+static void	setup(t_rl *rl, t_ctxt *ctxt, char const *prompt) {
 	setup_signals(&(ctxt->old_sa), &(ctxt->sa));
 	enable_raw_mode(&(ctxt->termios));
 	write(2, prompt, strlen(prompt));
@@ -155,7 +154,7 @@ void	setup(t_rl *rl, t_ctxt *ctxt, char const *prompt) {
 	rl->line[0] = '\0';
 }
 
-void	cleanup(t_rl *rl, t_ctxt *ctxt) {
+static void	cleanup(t_rl *rl, t_ctxt *ctxt) {
 	rl->line[rl->len] = '\0';
 	write(2, "\r\v", 2);
 	disable_raw_mode(&(ctxt->termios));
@@ -171,12 +170,12 @@ char	*tshoo_line(char const *prompt, t_tshoo_hist *history) {
 	setup(&rl, &ctxt, prompt);
 	while (1) {
 		bytes_read = read(0, &c, 1);
-		if (c == '\x4' && rl.len == 0)
+		if (bytes_read < 0 && errno == EINTR && got_sigint)
+			control_c(&rl);
+		else if (c == '\x4' && rl.len == 0)
 			return (cleanup(&rl, &ctxt), NULL);
 		else if (bytes_read == 0 || c == '\x4')
 			continue ;
-		else if (bytes_read < 0 && errno == EINTR && got_sigint)
-			control_c(&rl);
 		else if (c == '\r' || rl.len == 1023)
 			break ;
 		else if (c == '\x7f')
