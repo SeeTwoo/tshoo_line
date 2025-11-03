@@ -17,8 +17,23 @@ void	enable_raw_mode(t_settings *original);
 void	disable_raw_mode(t_settings *original);
 void	tshoo_completion(t_rl *rl);
 
-static void	replace_line(t_rl *rl, t_tshoo_hist **history, char cmd) {
+static void	replace_line(t_rl *rl, char *replacement) {
 	int	temp;
+
+	temp = rl->i;
+	while (temp > 0) {
+		write(2, "\x1b[D", 3);
+		temp--;
+	}
+	dprintf(2, "\x1b[%ldP", strlen(rl->line));
+	memcpy(rl->line, replacement, strlen(replacement) + 1);
+	rl->len = strlen(replacement);
+	rl->i = rl->len;
+	write(2, rl->line, strlen(rl->line));
+}
+
+static void	replace_from_history(t_rl *rl, t_tshoo_hist **history, char cmd) {
+	char	*replacement;
 
 	if (*history == NULL)
 		return ;
@@ -30,16 +45,8 @@ static void	replace_line(t_rl *rl, t_tshoo_hist **history, char cmd) {
 		return ;
 	if (!(*history)->line)
 		return ;
-	temp = rl->i;
-	while (temp > 0) {
-		write(2, "\x1b[D", 3);
-		temp--;
-	}
-	dprintf(2, "\x1b[%ldP", strlen(rl->line));
-	memcpy(rl->line, (*history)->line, strlen((*history)->line) + 1);
-	rl->len = strlen((*history)->line);
-	rl->i = rl->len;
-	write(2, rl->line, strlen(rl->line));
+	replacement = (*history)->line;
+	replace_line(rl, replacement);
 }
 
 static void	fill_command(char *cmd_buf, char *cmd) {
@@ -78,7 +85,7 @@ static void	arrow_handling(t_rl *rl, t_tshoo_hist **history) {
 
 	fill_command(cmd_buf, &cmd);
 	if (cmd == 'A' || cmd == 'B')
-		replace_line(rl, history, cmd);
+		replace_from_history(rl, history, cmd);
 	else if (cmd == 'C')
 		cursor_forward(rl);
 	else if (cmd == 'D')
@@ -128,16 +135,7 @@ void	setup_signals(t_sigaction *old, t_sigaction *sa) {
 }
 
 void	control_c(t_rl *rl) {
-	int	temp = rl->i;
-
-	while (temp > 0) {
-		write(2, "\x1b[D", 3);
-		temp--;
-	}
-	dprintf(2, "\x1b[%ldP", strlen(rl->line));
-	rl->line[0] = '\0';
-	rl->i = 0;
-	rl->len = 0;
+	replace_line(rl, "");
 	got_sigint = 0;
 }
 
