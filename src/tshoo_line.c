@@ -120,12 +120,21 @@ static void	fill_line(t_rl *rl, char c) {
 }
 
 static void	backspace_handling(t_rl *rl) {
+	int	temp;
+
 	if (rl->i <= 0)
 		return ;
+	memmove(rl->line + rl->i - 1, rl->line + rl->i , strlen(rl->line + rl->i) + 1);
 	rl->i--;
-	rl->line[rl->i] = '\0';
 	rl->len--;
-	write(2, "\x08\x1b[K", 4);
+	write(2, "\x1b[D", 3);
+	write(2, "\x1b[1P", 4);
+	write(2, rl->line + rl->i, strlen(rl->line + rl->i));
+	temp = rl->len;
+	while (temp > rl->i) {
+		write(2, "\x1b[D", 3);
+		temp--;
+	}
 }
 
 static void	control_c(t_rl *rl) {
