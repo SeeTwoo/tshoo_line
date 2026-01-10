@@ -78,6 +78,7 @@ static void	cursor_forward(t_rl *rl) {
 	if (rl->pos >= rl->len)
 		return ;
 	rl->pos++;
+	rl->abs_pos++;
 	write(2, "\x1b[C", 3);
 }
 
@@ -85,6 +86,7 @@ static void	cursor_backward(t_rl *rl) {
 	if (rl->pos <= 0)
 		return ;
 	rl->pos--;
+	rl->abs_pos--;
 	write(2, "\x1b[D", 3);
 }
 
@@ -110,10 +112,6 @@ static void	fill_line(t_rl *rl, char c) {
 	src = rl->line + rl->pos;
 	memmove(dest, src, strlen(src) + 1);
 	src[0] = c;
-	if (rl->abs_pos == rl->width) {
-		write(2, "\v\r", 2);
-		rl->abs_pos = 0;
-	}
 	write(2, src, strlen(src));
 	temp = rl->len;
 	while (temp > rl->pos) {
@@ -123,6 +121,10 @@ static void	fill_line(t_rl *rl, char c) {
 	rl->pos++;
 	rl->len++;
 	rl->abs_pos++;
+	if (rl->abs_pos == rl->width) {
+		write(2, "\v\r", 2);
+		rl->abs_pos = 0;
+	}
 }
 
 static void	backspace_handling(t_rl *rl) {
@@ -190,7 +192,7 @@ static void	setup(t_rl *rl, t_ctxt *ctxt, char const *prompt) {
 
 	setup_signals(&(ctxt->old_sa), &(ctxt->sa));
 	enable_raw_mode(&(ctxt->termios));
-	write(2, prompt, prompt_len);
+	write(2, prompt, strlen(prompt));
 	rl->pos = 0;
 	rl->len = 0;
 	rl->width = get_term_width();
