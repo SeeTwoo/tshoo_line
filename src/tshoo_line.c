@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
 #include "tshoo_line_struct.h"
@@ -28,7 +29,7 @@ void	tshoo_completion(t_rl *rl);
 static void	replace_line(t_rl *rl, char *replacement) {
 	int	temp;
 
-	temp = rl->i;
+	temp = rl->pos;
 	while (temp > 0) {
 		write(2, "\x1b[D", 3);
 		temp--;
@@ -36,7 +37,7 @@ static void	replace_line(t_rl *rl, char *replacement) {
 	dprintf(2, "\x1b[%ldP", strlen(rl->line));
 	memcpy(rl->line, replacement, strlen(replacement) + 1);
 	rl->len = strlen(replacement);
-	rl->i = rl->len;
+	rl->pos = rl->len;
 	write(2, rl->line, strlen(rl->line));
 }
 
@@ -58,32 +59,32 @@ static void	replace_from_history(t_rl *rl, t_tshoo_hist **history, char cmd) {
 }
 
 static void	fill_command(char *cmd_buf, char *cmd) {
-	int	i;
+	int	pos;
 
-	i = 0;
+	pos = 0;
 	while (1) {
-		if (read(0, &cmd_buf[i], 1) == 0)
+		if (read(0, &cmd_buf[pos], 1) == 0)
 			continue ;
-		if (isalpha(cmd_buf[i]))
+		if (isalpha(cmd_buf[pos]))
 			break ;
-		i++;
+		pos++;
 	}
-	*cmd = cmd_buf[i];
-	i++;
-	cmd_buf[i] = '\0';
+	*cmd = cmd_buf[pos];
+	pos++;
+	cmd_buf[pos] = '\0';
 }
 
 static void	cursor_forward(t_rl *rl) {
-	if (rl->i >= rl->len)
+	if (rl->pos >= rl->len)
 		return ;
-	rl->i++;
+	rl->pos++;
 	write(2, "\x1b[C", 3);
 }
 
 static void	cursor_backward(t_rl *rl) {
-	if (rl->i <= 0)
+	if (rl->pos <= 0)
 		return ;
-	rl->i--;
+	rl->pos--;
 	write(2, "\x1b[D", 3);
 }
 
@@ -105,33 +106,38 @@ static void	fill_line(t_rl *rl, char c) {
 	char	*src;
 	int		temp;
 
-	dest = rl->line + rl->i + 1;
-	src = rl->line + rl->i;
+	dest = rl->line + rl->pos + 1;
+	src = rl->line + rl->pos;
 	memmove(dest, src, strlen(src) + 1);
 	src[0] = c;
+	if (rl->abs_pos == rl->width) {
+		write(2, "\v\r", 2);
+		rl->abs_pos = 0;
+	}
 	write(2, src, strlen(src));
 	temp = rl->len;
-	while (temp > rl->i) {
+	while (temp > rl->pos) {
 		write(2, "\x1b[D", 3);
 		temp--;
 	}
-	rl->i++;
+	rl->pos++;
 	rl->len++;
+	rl->abs_pos++;
 }
 
 static void	backspace_handling(t_rl *rl) {
 	int	temp;
 
-	if (rl->i <= 0)
+	if (rl->pos <= 0)
 		return ;
-	memmove(rl->line + rl->i - 1, rl->line + rl->i , strlen(rl->line + rl->i) + 1);
-	rl->i--;
+	memmove(rl->line + rl->pos - 1, rl->line + rl->pos , strlen(rl->line + rl->pos) + 1);
+	rl->pos--;
 	rl->len--;
 	write(2, "\x1b[D", 3);
 	write(2, "\x1b[1P", 4);
-	write(2, rl->line + rl->i, strlen(rl->line + rl->i));
+	write(2, rl->line + rl->pos, strlen(rl->line + rl->pos));
 	temp = rl->len;
-	while (temp > rl->i) {
+	while (temp > rl->pos) {
 		write(2, "\x1b[D", 3);
 		temp--;
 	}
@@ -154,12 +160,41 @@ static void	setup_signals(t_sigaction *old, t_sigaction *sa) {
 	sigaction(SIGINT, sa, old);
 }
 
+static int	get_term_width(void) {
+	struct winsize	ws;
+
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1)
+		return 40;
+	return ws.ws_col;
+}
+
+static size_t	printed_len(char const *s) {
+	size_t	i = 0;
+
+	while (*s) {
+		if (*s == '\x1b') {
+			while (!isalpha(*s) && *s)
+				s++;
+			if (isalpha(*s))
+				s++;
+		} else {
+			s++;
+			i++;
+		}
+	}
+	return i;
+}
+
 static void	setup(t_rl *rl, t_ctxt *ctxt, char const *prompt) {
+	size_t	prompt_len = printed_len(prompt);
+
 	setup_signals(&(ctxt->old_sa), &(ctxt->sa));
 	enable_raw_mode(&(ctxt->termios));
-	write(2, prompt, strlen(prompt));
-	rl->i = 0;
+	write(2, prompt, prompt_len);
+	rl->pos = 0;
 	rl->len = 0;
+	rl->width = get_term_width();
+	rl->abs_pos = prompt_len;
 	rl->line[0] = '\0';
 }
 
