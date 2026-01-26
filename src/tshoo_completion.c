@@ -51,7 +51,7 @@ static char	*find_match(t_comp *comp) {
 }
 
 static void	init_comp(t_comp *comp, t_rl *rl) {
-	int	temp = rl->pos;
+	int	temp = rl->idx;
 
 	while (temp > 0 && !is_delim(rl->line[temp - 1]))
 		temp--;
@@ -73,7 +73,7 @@ static void	replace(t_rl *rl, t_comp *comp) {
 
 	memmove(comp->word_end + filler_len, comp->word_end, strcspn(comp->word_end, DELIM));
 	memcpy(comp->word_end, comp->filler, filler_len);
-	rl->pos += (comp->word_end + filler_len) - rl->line;
+	rl->idx += (comp->word_end + filler_len) - rl->line;
 	rl->len += filler_len;
 	rl->line[rl->len] = '\0';
 	write(2, comp->filler, filler_len);
