@@ -79,6 +79,7 @@ static void	cursor_forward(t_rl *rl) {
 		return ;
 	rl->idx++;
 	rl->pos++;
+	rl->abs_pos++;
 	write(2, "\x1b[C", 3);
 }
 
@@ -87,6 +88,7 @@ static void	cursor_backward(t_rl *rl) {
 		return ;
 	rl->idx--;
 	rl->pos--;
+	rl->abs_pos--;
 	write(2, "\x1b[D", 3);
 }
 
@@ -207,7 +209,11 @@ static void	setup(t_rl *rl, t_ctxt *ctxt, char const *prompt) {
 	setup_signals(&(ctxt->old_sa), &(ctxt->sa));
 	enable_raw_mode(&(ctxt->termios));
 	write(2, prompt, strlen(prompt));
+<<<<<<< HEAD
 	rl->idx = 0;
+=======
+	rl->pos = 0;
+>>>>>>> 28b5265de2dc6a3ddeddb99c9709e18d84298528
 	rl->len = 0;
 	rl->width = get_term_width(); ///careful sometimes
 	rl->width = 10;
