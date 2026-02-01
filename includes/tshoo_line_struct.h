@@ -17,10 +17,13 @@ typedef struct s_rl	t_rl;
 
 struct s_rl {
 	char	line[1024];
+	int		term_width;
+	int		prompt_len;
+	int		row_nbr;
 	int		idx;
 	int		len;
-	int		width;
-	int		pos;
+	int		x;
+	int		y;
 };
 
 typedef struct s_tshoo_hist	t_tshoo_hist;

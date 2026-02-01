@@ -26,6 +26,30 @@ void	enable_raw_mode(t_settings *original);
 void	disable_raw_mode(t_settings *original);
 void	tshoo_completion(t_rl *rl);
 
+static void	wrapper_write(t_rl *rl) {
+	int		len_to_write = rl->len - rl->idx;
+	int		bit_len = len_to_write + rl->x > rl->term_width ? rl->term_width - rl->x : len_to_write;
+	int		y_offset = ((rl->x + len_to_write) / rl->term_width) - 1;
+	int		x_offset = rl->x - ((rl->x + len_to_write) % rl->term_width);
+	char	*temp = rl->line + rl->idx;
+
+	do {
+		write(2, temp, bit_len);
+		len_to_write -= bit_len;
+		temp += bit_len;
+		if (len_to_write)
+			write(2, "\v\r", 2);
+		bit_len = len_to_write > rl->term_width ? rl->term_width : len_to_write;
+	} while (len_to_write);
+	if (y_offset)
+		dprintf(2, "\x1b[%dA", y_offset);
+	if (x_offset > 0)
+		dprintf(2, "\x1b[%dC", x_offset);
+	else if (x_offset < 0)
+		dprintf(2, "\x1b[%dD", -x_offset);
+}
+
+//TODO handle wrapping properly on rewwrite
 static void	replace_line(t_rl *rl, char *replacement) {
 	int	temp;
 
@@ -34,11 +58,11 @@ static void	replace_line(t_rl *rl, char *replacement) {
 		write(2, "\x1b[D", 3);
 		temp--;
 	}
-	dprintf(2, "\x1b[%ldP", strlen(rl->line));
-	memcpy(rl->line, replacement, strlen(replacement) + 1);
+	dprintf(2, "\x1b[%dP", rl->len);
 	rl->len = strlen(replacement);
+	memcpy(rl->line, replacement, rl->len);
 	rl->idx = rl->len;
-	write(2, rl->line, strlen(rl->line));
+	write(2, rl->line, rl->len);
 }
 
 static void	replace_from_history(t_rl *rl, t_tshoo_hist **history, char cmd) {
@@ -78,18 +102,27 @@ static void	cursor_forward(t_rl *rl) {
 	if (rl->idx >= rl->len)
 		return ;
 	rl->idx++;
-	rl->pos++;
-	rl->abs_pos++;
-	write(2, "\x1b[C", 3);
+	if (rl->x == rl->term_width - 1) {
+		rl->x = 0;
+		write(2, "\v\r", 2);
+	} else {
+		rl->x++;
+		write(2, "\x1b[C", 3);
+	}
 }
 
 static void	cursor_backward(t_rl *rl) {
 	if (rl->idx <= 0)
 		return ;
 	rl->idx--;
-	rl->pos--;
-	rl->abs_pos--;
-	write(2, "\x1b[D", 3);
+	if (rl->x == 0) {
+		rl->x = rl->term_width - 1;
+		write(2, "\x1b[A", 3);
+		dprintf(2, "\x1b[%dC", rl->term_width);
+	} else {
+		rl->x--;
+		write(2, "\x1b[D", 3);
+	}
 }
 
 static void	arrow_handling(t_rl *rl, t_tshoo_hist **history) {
@@ -106,59 +139,42 @@ static void	arrow_handling(t_rl *rl, t_tshoo_hist **history) {
 }
 
 static void	fill_line(t_rl *rl, char c) {
-	char	*dest;
-	char	*src;
-	int		temp;
+	char	*current = rl->line + rl->idx;
 
-	dest = rl->line + rl->idx + 1;
-	src = rl->line + rl->idx;
-	memmove(dest, src, strlen(src) + 1);
-	src[0] = c;
-	write(2, src, strlen(src));
-	temp = rl->len;
-	while (temp > rl->idx) {
-		write(2, "\x1b[D", 3);
-		temp--;
-	}
-	if (rl->pos == rl->width - 1) {
-		write(2, "\v\r", 2);
-		rl->pos = 0;
-		rl->idx++;
-		rl->len++;
-	} else {
-		rl->idx++;
-		rl->len++;
-		rl->pos++;
-	}
+	memmove(current + 1, current,  rl->len - rl->idx);
+	*current = c;
+	rl->len++;
+	wrapper_write(rl);
+	cursor_forward(rl);
+}
+
+static void	regular_backspace(t_rl *rl) {
+	rl->idx--;
+	rl->x--;
+	write(2, "\x1b[D", 3);
+	write(2, "\x1b[1P", 4);
+	wrapper_write(rl);
+}
+
+static void	wrap_backspace(t_rl *rl) {
+	dprintf(2, "\x1b[%dC", rl->term_width - 1);
+	write(2, "\x1b[A", 3);
+	write(2, "\x1b[1P", 4);
+	rl->x = rl->term_width;
+	rl->x--;
+	rl->idx--;
 }
 
 static void	backspace_handling(t_rl *rl) {
-	int		temp;
-	char	cmd[32];
 
 	if (rl->idx <= 0)
 		return ;
-	memmove(rl->line + rl->idx - 1, rl->line + rl->idx , strlen(rl->line + rl->idx) + 1);
-	if (rl->pos == 0) {
-		sprintf(cmd, "\x1b[%dC", rl->width);
-		write(2, cmd, strlen(cmd));
-		write(2, "\x1b[A", 3);
-		rl->pos = rl->width - 1;
-		rl->idx--;
-		rl->len--;
-	} else {
-		rl->idx--;
-		rl->pos--;
-		rl->len--;
-	}
-	write(2, "\x1b[D", 3);
-	write(2, "\x1b[1P", 4);
-	write(2, rl->line + rl->idx, strlen(rl->line + rl->idx));
-	temp = rl->len;
-	while (temp > rl->idx) {
-		write(2, "\x1b[D", 3);
-		temp--;
-	}
+	memmove(rl->line + rl->idx - 1, rl->line + rl->idx , rl->len - rl->idx);
+	rl->len--;
+	if (rl->x == 0)
+		wrap_backspace(rl);
+	else
+		regular_backspace(rl);
 }
 
 static void	control_c(t_rl *rl) {
@@ -204,21 +220,17 @@ static size_t	printed_len(char const *s) {
 }
 
 static void	setup(t_rl *rl, t_ctxt *ctxt, char const *prompt) {
-	size_t	prompt_len = printed_len(prompt);
-
 	setup_signals(&(ctxt->old_sa), &(ctxt->sa));
 	enable_raw_mode(&(ctxt->termios));
 	write(2, prompt, strlen(prompt));
-<<<<<<< HEAD
 	rl->idx = 0;
-=======
-	rl->pos = 0;
->>>>>>> 28b5265de2dc6a3ddeddb99c9709e18d84298528
 	rl->len = 0;
-	rl->width = get_term_width(); ///careful sometimes
-	rl->width = 10;
-	rl->pos = prompt_len;
-	rl->line[0] = '\0';
+	rl->term_width = get_term_width();
+//	rl->term_width = 10;
+	rl->prompt_len = printed_len(prompt);
+	rl->x = rl->prompt_len;
+	rl->y = 0;
+	rl->row_nbr = 1;
 }
 
 static void	cleanup(t_rl *rl, t_ctxt *ctxt) {

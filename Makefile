@@ -3,11 +3,9 @@ CC = cc -Wall -Wextra -Werror -Iincludes
 CCDEBUG = $(CC) -g3 -O0
 
 SRC_DIR = src
-SRC_FILES = raw_mode_handling.c \
-			tshoo_add_hist.c \
-			tshoo_completion.c \
-			tshoo_free_hist.c \
-			tshoo_init_hist.c \
+SRC_FILES = history_handling.c \
+			raw_mode_handling.c \
+			completion.c \
 			tshoo_line.c
 
 SRC = $(addprefix $(SRC_DIR)/, $(SRC_FILES))

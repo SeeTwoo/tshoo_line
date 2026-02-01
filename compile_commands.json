@@ -1,98 +1,66 @@
 [
   {
-    "file": "src/raw_mode_handling.c",
     "arguments": [
-      "cc",
+      "/usr/bin/cc",
       "-Wall",
       "-Wextra",
       "-Werror",
       "-Iincludes",
       "-c",
-      "src/raw_mode_handling.c",
       "-o",
-      "obj/raw_mode_handling.o"
+      "obj/history_handling.o",
+      "src/history_handling.c"
     ],
-    "directory": "/home/walter/Documents/line_editing/tshoo_line",
-    "output": "obj/raw_mode_handling.o"
+    "directory": "/home/seetwoo/Documents/shell/tshoo_line",
+    "file": "/home/seetwoo/Documents/shell/tshoo_line/src/history_handling.c",
+    "output": "/home/seetwoo/Documents/shell/tshoo_line/obj/history_handling.o"
   },
   {
-    "file": "src/tshoo_add_hist.c",
     "arguments": [
-      "cc",
+      "/usr/bin/cc",
       "-Wall",
       "-Wextra",
       "-Werror",
       "-Iincludes",
       "-c",
-      "src/tshoo_add_hist.c",
       "-o",
-      "obj/tshoo_add_hist.o"
+      "obj/raw_mode_handling.o",
+      "src/raw_mode_handling.c"
     ],
-    "directory": "/home/walter/Documents/line_editing/tshoo_line",
-    "output": "obj/tshoo_add_hist.o"
+    "directory": "/home/seetwoo/Documents/shell/tshoo_line",
+    "file": "/home/seetwoo/Documents/shell/tshoo_line/src/raw_mode_handling.c",
+    "output": "/home/seetwoo/Documents/shell/tshoo_line/obj/raw_mode_handling.o"
   },
   {
-    "file": "src/tshoo_completion.c",
     "arguments": [
-      "cc",
+      "/usr/bin/cc",
       "-Wall",
       "-Wextra",
       "-Werror",
       "-Iincludes",
       "-c",
-      "src/tshoo_completion.c",
       "-o",
-      "obj/tshoo_completion.o"
+      "obj/completion.o",
+      "src/completion.c"
     ],
-    "directory": "/home/walter/Documents/line_editing/tshoo_line",
-    "output": "obj/tshoo_completion.o"
+    "directory": "/home/seetwoo/Documents/shell/tshoo_line",
+    "file": "/home/seetwoo/Documents/shell/tshoo_line/src/completion.c",
+    "output": "/home/seetwoo/Documents/shell/tshoo_line/obj/completion.o"
   },
   {
-    "file": "src/tshoo_free_hist.c",
     "arguments": [
-      "cc",
+      "/usr/bin/cc",
       "-Wall",
       "-Wextra",
       "-Werror",
       "-Iincludes",
       "-c",
-      "src/tshoo_free_hist.c",
       "-o",
-      "obj/tshoo_free_hist.o"
+      "obj/tshoo_line.o",
+      "src/tshoo_line.c"
     ],
-    "directory": "/home/walter/Documents/line_editing/tshoo_line",
-    "output": "obj/tshoo_free_hist.o"
-  },
-  {
-    "file": "src/tshoo_init_hist.c",
-    "arguments": [
-      "cc",
-      "-Wall",
-      "-Wextra",
-      "-Werror",
-      "-Iincludes",
-      "-c",
-      "src/tshoo_init_hist.c",
-      "-o",
-      "obj/tshoo_init_hist.o"
-    ],
-    "directory": "/home/walter/Documents/line_editing/tshoo_line",
-    "output": "obj/tshoo_init_hist.o"
-  },
-  {
-    "file": "src/tshoo_line.c",
-    "arguments": [
-      "cc",
-      "-Wall",
-      "-Wextra",
-      "-Werror",
-      "-Iincludes",
-      "-c",
-      "src/tshoo_line.c",
-      "-o",
-      "obj/tshoo_line.o"
-    ],
-    "directory": "/home/walter/Documents/line_editing/tshoo_line",
-    "output": "obj/tshoo_line.o"
+    "directory": "/home/seetwoo/Documents/shell/tshoo_line",
+    "file": "/home/seetwoo/Documents/shell/tshoo_line/src/tshoo_line.c",
+    "output": "/home/seetwoo/Documents/shell/tshoo_line/obj/tshoo_line.o"
   }
 ]
