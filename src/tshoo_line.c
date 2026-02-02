@@ -62,6 +62,7 @@ static void	replace_line(t_rl *rl, char *replacement) {
 	rl->len = strlen(replacement);
 	memcpy(rl->line, replacement, rl->len);
 	rl->idx = rl->len;
+	rl->x = rl->prompt_len + rl->len - 1;
 	write(2, rl->line, rl->len);
 }
 
