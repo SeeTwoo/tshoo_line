@@ -44,7 +44,16 @@ static int	compute_vertical_offset(t_rl *rl, int len_to_write) {
 static void	wrapper_delete(t_rl *rl) {
 	int	y_offset = compute_vertical_offset(rl, rl->len - rl->idx);
 	
-	write9
+	(void)y_offset;
+	write(2, "\x1b[0K", 4);
+	/*
+	for (int i = 0; i < y_offset; i++) {
+		write(2, "\x1b[D", 3);
+		write(2, "\x1b[2K", 4);
+	}
+	if (y_offset > 0)
+		dprintf(2, "\x1b[%dC", y_offset);
+	*/
 }
 
 static void	wrapper_write(t_rl *rl) {
@@ -172,7 +181,7 @@ static void	fill_line(t_rl *rl, char c) {
 	rl->len++;
 	wrapper_write(rl);
 	rl->idx++;
-	if (rl->x == rl->term_width - 2) {
+	if (rl->x == rl->term_width - 1) {
 		write(2, "\v\r", 2);
 		rl->x = 0;
 	} else {
@@ -187,12 +196,17 @@ static void	backspace_handling(t_rl *rl) {
 	char	*current = rl->line + rl->idx;
 
 	memmove(current - 1, current, rl->len - rl->idx);
-	wrapper_delete(rl);
+	if (rl->x == 0) {
+		rl->x = rl->term_width - 1;
+		write(2, "\x1b[A", 3);
+		dprintf(2, "\x1b[%dC", rl->term_width - 1);
+	} else {
+		rl->x--;
+		write(2, "\x1b[D", 3);
+	}
+	rl->idx--;
 	rl->len--;
-	if (rl->x == 0)
-		wrap_backspace(rl);
-	else
-		regular_backspace(rl);
+	wrapper_delete(rl);
 }
 
 static void	control_c(t_rl *rl) {

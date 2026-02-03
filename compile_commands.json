@@ -7,13 +7,17 @@
       "-Werror",
       "-Iincludes",
       "-c",
+      "-I",
+      "/home/wbeschon/.local/include",
+      "-I",
+      ".",
       "-o",
       "obj/history_handling.o",
       "src/history_handling.c"
     ],
-    "directory": "/home/seetwoo/Documents/shell/tshoo_line",
-    "file": "/home/seetwoo/Documents/shell/tshoo_line/src/history_handling.c",
-    "output": "/home/seetwoo/Documents/shell/tshoo_line/obj/history_handling.o"
+    "directory": "/home/wbeschon/Documents/tshoo_line",
+    "file": "/home/wbeschon/Documents/tshoo_line/src/history_handling.c",
+    "output": "/home/wbeschon/Documents/tshoo_line/obj/history_handling.o"
   },
   {
     "arguments": [
@@ -23,13 +27,17 @@
       "-Werror",
       "-Iincludes",
       "-c",
+      "-I",
+      "/home/wbeschon/.local/include",
+      "-I",
+      ".",
       "-o",
       "obj/raw_mode_handling.o",
       "src/raw_mode_handling.c"
     ],
-    "directory": "/home/seetwoo/Documents/shell/tshoo_line",
-    "file": "/home/seetwoo/Documents/shell/tshoo_line/src/raw_mode_handling.c",
-    "output": "/home/seetwoo/Documents/shell/tshoo_line/obj/raw_mode_handling.o"
+    "directory": "/home/wbeschon/Documents/tshoo_line",
+    "file": "/home/wbeschon/Documents/tshoo_line/src/raw_mode_handling.c",
+    "output": "/home/wbeschon/Documents/tshoo_line/obj/raw_mode_handling.o"
   },
   {
     "arguments": [
@@ -39,13 +47,17 @@
       "-Werror",
       "-Iincludes",
       "-c",
+      "-I",
+      "/home/wbeschon/.local/include",
+      "-I",
+      ".",
       "-o",
       "obj/completion.o",
       "src/completion.c"
     ],
-    "directory": "/home/seetwoo/Documents/shell/tshoo_line",
-    "file": "/home/seetwoo/Documents/shell/tshoo_line/src/completion.c",
-    "output": "/home/seetwoo/Documents/shell/tshoo_line/obj/completion.o"
+    "directory": "/home/wbeschon/Documents/tshoo_line",
+    "file": "/home/wbeschon/Documents/tshoo_line/src/completion.c",
+    "output": "/home/wbeschon/Documents/tshoo_line/obj/completion.o"
   },
   {
     "arguments": [
@@ -55,12 +67,16 @@
       "-Werror",
       "-Iincludes",
       "-c",
+      "-I",
+      "/home/wbeschon/.local/include",
+      "-I",
+      ".",
       "-o",
       "obj/tshoo_line.o",
       "src/tshoo_line.c"
     ],
-    "directory": "/home/seetwoo/Documents/shell/tshoo_line",
-    "file": "/home/seetwoo/Documents/shell/tshoo_line/src/tshoo_line.c",
-    "output": "/home/seetwoo/Documents/shell/tshoo_line/obj/tshoo_line.o"
+    "directory": "/home/wbeschon/Documents/tshoo_line",
+    "file": "/home/wbeschon/Documents/tshoo_line/src/tshoo_line.c",
+    "output": "/home/wbeschon/Documents/tshoo_line/obj/tshoo_line.o"
   }
 ]
