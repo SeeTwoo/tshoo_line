@@ -60,9 +60,10 @@ static void	wrapper_write(t_rl *rl) {
 	int		len_to_write = rl->len - rl->idx;
 	int		x_offset = compute_horizontal_offset(rl, len_to_write);
 	int		y_offset = compute_vertical_offset(rl, len_to_write);
-	int		bit_len;
+	//int		bit_len;
 	char	*temp = rl->line + rl->idx;
 
+	/*
 	if (len_to_write + rl->x > rl->term_width)
 		bit_len = rl->term_width - rl->x;
 	else
@@ -75,10 +76,14 @@ static void	wrapper_write(t_rl *rl) {
 			write(2, "\v\r", 2);
 		bit_len = len_to_write > rl->term_width ? rl->term_width : len_to_write;
 	} while (len_to_write);
+	*/
+	write(2, temp, len_to_write);
 	if (y_offset)
 		dprintf(2, "\x1b[%dA", y_offset);
 	if (x_offset > 0)
 		dprintf(2, "\x1b[%dC", x_offset);
+	if (x_offset > 2)
+		dprintf(2, "something is weird");
 	else if (x_offset < 0)
 		dprintf(2, "\x1b[%dD", -x_offset);
 }
