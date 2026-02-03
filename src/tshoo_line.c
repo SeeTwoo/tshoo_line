@@ -26,13 +26,38 @@ void	enable_raw_mode(t_settings *original);
 void	disable_raw_mode(t_settings *original);
 void	tshoo_completion(t_rl *rl);
 
+static int	compute_horizontal_offset(t_rl *rl, int len_to_write) {
+	int	total = len_to_write + rl->x;
+	int	final_x = (total - 1) % rl->term_width;
+	int	offset = final_x - rl->x;
+
+	return offset;
+}
+
+static int	compute_vertical_offset(t_rl *rl, int len_to_write) {
+	int	total = len_to_write + rl->x;
+	int line_nbr = (total - 1) / rl->term_width;
+
+	return line_nbr - 1;
+}
+
+static void	wrapper_delete(t_rl *rl) {
+	int	y_offset = compute_vertical_offset(rl, rl->len - rl->idx);
+	
+	write9
+}
+
 static void	wrapper_write(t_rl *rl) {
 	int		len_to_write = rl->len - rl->idx;
-	int		bit_len = len_to_write + rl->x > rl->term_width ? rl->term_width - rl->x : len_to_write;
-	int		y_offset = ((rl->x + len_to_write) / rl->term_width) - 1;
-	int		x_offset = rl->x - ((rl->x + len_to_write) % rl->term_width);
+	int		x_offset = compute_horizontal_offset(rl, len_to_write);
+	int		y_offset = compute_vertical_offset(rl, len_to_write);
+	int		bit_len;
 	char	*temp = rl->line + rl->idx;
 
+	if (len_to_write + rl->x > rl->term_width)
+		bit_len = rl->term_width - rl->x;
+	else
+		bit_len = len_to_write;
 	do {
 		write(2, temp, bit_len);
 		len_to_write -= bit_len;
@@ -146,31 +171,23 @@ static void	fill_line(t_rl *rl, char c) {
 	*current = c;
 	rl->len++;
 	wrapper_write(rl);
-	cursor_forward(rl);
-}
-
-static void	regular_backspace(t_rl *rl) {
-	rl->idx--;
-	rl->x--;
-	write(2, "\x1b[D", 3);
-	write(2, "\x1b[1P", 4);
-	wrapper_write(rl);
-}
-
-static void	wrap_backspace(t_rl *rl) {
-	dprintf(2, "\x1b[%dC", rl->term_width - 1);
-	write(2, "\x1b[A", 3);
-	write(2, "\x1b[1P", 4);
-	rl->x = rl->term_width;
-	rl->x--;
-	rl->idx--;
+	rl->idx++;
+	if (rl->x == rl->term_width - 2) {
+		write(2, "\v\r", 2);
+		rl->x = 0;
+	} else {
+		rl->x++;
+	}
 }
 
 static void	backspace_handling(t_rl *rl) {
-
 	if (rl->idx <= 0)
 		return ;
-	memmove(rl->line + rl->idx - 1, rl->line + rl->idx , rl->len - rl->idx);
+
+	char	*current = rl->line + rl->idx;
+
+	memmove(current - 1, current, rl->len - rl->idx);
+	wrapper_delete(rl);
 	rl->len--;
 	if (rl->x == 0)
 		wrap_backspace(rl);
@@ -227,7 +244,7 @@ static void	setup(t_rl *rl, t_ctxt *ctxt, char const *prompt) {
 	rl->idx = 0;
 	rl->len = 0;
 	rl->term_width = get_term_width();
-//	rl->term_width = 10;
+	rl->term_width = 10;
 	rl->prompt_len = printed_len(prompt);
 	rl->x = rl->prompt_len;
 	rl->y = 0;
