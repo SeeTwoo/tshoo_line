@@ -26,6 +26,7 @@ void	enable_raw_mode(t_settings *original);
 void	disable_raw_mode(t_settings *original);
 void	tshoo_completion(t_rl *rl);
 
+/*
 static int	compute_horizontal_offset(t_rl *rl, int len_to_write) {
 	int	total = len_to_write + rl->x;
 	int	final_x = (total - 1) % rl->term_width;
@@ -33,12 +34,33 @@ static int	compute_horizontal_offset(t_rl *rl, int len_to_write) {
 
 	return offset;
 }
+*/
+static int	compute_horizontal_offset(t_rl *rl, int len_to_write) {
+	int	total = len_to_write + rl->x;
+	int	final_x;
+
+	if (total % rl->term_width == 0)
+		final_x = rl->term_width;
+	else
+		final_x = total % rl->term_width;
+
+	/*
+	if (final_x < 0)
+		final_x++;
+	else if (final_x > 0)
+		final_x--;
+	*/
+
+	return (rl->x + 1) - final_x;
+}
 
 static int	compute_vertical_offset(t_rl *rl, int len_to_write) {
 	int	total = len_to_write + rl->x;
-	int line_nbr = (total - 1) / rl->term_width;
 
-	return line_nbr - 1;
+	if (total % rl->term_width == 0)
+		return (total / rl->term_width) - 1;
+	else
+		return total - rl->term_width; 
 }
 
 static void	wrapper_delete(t_rl *rl) {
@@ -60,10 +82,9 @@ static void	wrapper_write(t_rl *rl) {
 	int		len_to_write = rl->len - rl->idx;
 	int		x_offset = compute_horizontal_offset(rl, len_to_write);
 	int		y_offset = compute_vertical_offset(rl, len_to_write);
-	//int		bit_len;
+	int		bit_len;
 	char	*temp = rl->line + rl->idx;
 
-	/*
 	if (len_to_write + rl->x > rl->term_width)
 		bit_len = rl->term_width - rl->x;
 	else
@@ -76,14 +97,12 @@ static void	wrapper_write(t_rl *rl) {
 			write(2, "\v\r", 2);
 		bit_len = len_to_write > rl->term_width ? rl->term_width : len_to_write;
 	} while (len_to_write);
-	*/
-	write(2, temp, len_to_write);
-	if (y_offset)
+	if (x_offset == 0 && y_offset <= 0)
+		return ;
+	if (y_offset > 0)
 		dprintf(2, "\x1b[%dA", y_offset);
 	if (x_offset > 0)
 		dprintf(2, "\x1b[%dC", x_offset);
-	if (x_offset > 2)
-		dprintf(2, "something is weird");
 	else if (x_offset < 0)
 		dprintf(2, "\x1b[%dD", -x_offset);
 }
@@ -158,7 +177,7 @@ static void	cursor_backward(t_rl *rl) {
 	if (rl->x == 0) {
 		rl->x = rl->term_width - 1;
 		write(2, "\x1b[A", 3);
-		dprintf(2, "\x1b[%dC", rl->term_width);
+		dprintf(2, "\x1b[%dC", rl->term_width - 1);
 	} else {
 		rl->x--;
 		write(2, "\x1b[D", 3);
@@ -263,7 +282,7 @@ static void	setup(t_rl *rl, t_ctxt *ctxt, char const *prompt) {
 	rl->idx = 0;
 	rl->len = 0;
 	rl->term_width = get_term_width();
-	rl->term_width = 10;
+	//rl->term_width = 10;
 	rl->prompt_len = printed_len(prompt);
 	rl->x = rl->prompt_len;
 	rl->y = 0;
