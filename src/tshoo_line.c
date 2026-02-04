@@ -26,31 +26,14 @@ void	enable_raw_mode(t_settings *original);
 void	disable_raw_mode(t_settings *original);
 void	tshoo_completion(t_rl *rl);
 
-/*
-static int	compute_horizontal_offset(t_rl *rl, int len_to_write) {
-	int	total = len_to_write + rl->x;
-	int	final_x = (total - 1) % rl->term_width;
-	int	offset = final_x - rl->x;
-
-	return offset;
-}
-*/
 static int	compute_horizontal_offset(t_rl *rl, int len_to_write) {
 	int	total = len_to_write + rl->x;
 	int	final_x;
 
 	if (total % rl->term_width == 0)
-		final_x = rl->term_width;
+		final_x = rl->term_width - 1;
 	else
 		final_x = total % rl->term_width;
-
-	/*
-	if (final_x < 0)
-		final_x++;
-	else if (final_x > 0)
-		final_x--;
-	*/
-
 	return (rl->x + 1) - final_x;
 }
 
@@ -60,7 +43,7 @@ static int	compute_vertical_offset(t_rl *rl, int len_to_write) {
 	if (total % rl->term_width == 0)
 		return (total / rl->term_width) - 1;
 	else
-		return total - rl->term_width; 
+		return total / rl->term_width;
 }
 
 static void	wrapper_delete(t_rl *rl) {
