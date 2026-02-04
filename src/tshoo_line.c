@@ -26,101 +26,6 @@ void	enable_raw_mode(t_settings *original);
 void	disable_raw_mode(t_settings *original);
 void	tshoo_completion(t_rl *rl);
 
-static int	compute_horizontal_offset(t_rl *rl, int len_to_write) {
-	int	total = len_to_write + rl->x;
-	int	final_x;
-
-	if (total % rl->term_width == 0)
-		final_x = rl->term_width - 1;
-	else
-		final_x = total % rl->term_width;
-	return rl->x - final_x;
-}
-
-static int	compute_vertical_offset(t_rl *rl, int len_to_write) {
-	int	total = len_to_write + rl->x;
-
-	if (total % rl->term_width == 0)
-		return (total / rl->term_width) - 1;
-	else
-		return total / rl->term_width;
-}
-
-static void	wrapper_delete(t_rl *rl) {
-	int	y_offset = compute_vertical_offset(rl, rl->len - rl->idx);
-	
-	write(2, "\x1b[0K", 4);
-	for (int i = 0; i < y_offset; i++) {
-		write(2, "\x1b[B", 3);
-		write(2, "\x1b[2K", 4);
-	}
-	if (y_offset > 0)
-		dprintf(2, "\x1b[%dA", y_offset);
-}
-
-static void	wrapper_write(t_rl *rl) {
-	int		len_to_write = rl->len - rl->idx;
-	int		x_offset = compute_horizontal_offset(rl, len_to_write);
-	int		y_offset = compute_vertical_offset(rl, len_to_write);
-	int		bit_len;
-	char	*temp = rl->line + rl->idx;
-
-	if (len_to_write + rl->x > rl->term_width)
-		bit_len = rl->term_width - rl->x;
-	else
-		bit_len = len_to_write;
-	do {
-		write(2, temp, bit_len);
-		len_to_write -= bit_len;
-		temp += bit_len;
-		if (len_to_write)
-			write(2, "\v\r", 2);
-		bit_len = len_to_write > rl->term_width ? rl->term_width : len_to_write;
-	} while (len_to_write);
-	if (x_offset == 0 && y_offset <= 0)
-		return ;
-	if (y_offset > 0)
-		dprintf(2, "\x1b[%dA", y_offset);
-	if (x_offset > 0)
-		dprintf(2, "\x1b[%dC", x_offset);
-	else if (x_offset < 0)
-		dprintf(2, "\x1b[%dD", -x_offset);
-}
-
-//TODO handle wrapping properly on rewwrite
-static void	replace_line(t_rl *rl, char *replacement) {
-	int	temp;
-
-	temp = rl->idx;
-	while (temp > 0) {
-		write(2, "\x1b[D", 3);
-		temp--;
-	}
-	dprintf(2, "\x1b[%dP", rl->len);
-	rl->len = strlen(replacement);
-	memcpy(rl->line, replacement, rl->len);
-	rl->idx = rl->len;
-	rl->x = rl->prompt_len + rl->len - 1;
-	write(2, rl->line, rl->len);
-}
-
-static void	replace_from_history(t_rl *rl, t_tshoo_hist **history, char cmd) {
-	char	*replacement;
-
-	if (*history == NULL)
-		return ;
-	if (cmd == 'A' && (*history)->prev)
-		*history = (*history)->prev;
-	else if (cmd == 'B' && (*history)->next)
-		*history = (*history)->next;
-	else
-		return ;
-	if (!(*history)->line)
-		return ;
-	replacement = (*history)->line;
-	replace_line(rl, replacement);
-}
-
 static void	fill_command(char *cmd_buf, char *cmd) {
 	int	idx;
 
@@ -162,6 +67,101 @@ static void	cursor_backward(t_rl *rl) {
 		rl->x--;
 		write(2, "\x1b[D", 3);
 	}
+}
+
+static int	compute_horizontal_offset(t_rl *rl, int len_to_write) {
+	int	total = len_to_write + rl->x;
+	int	final_x;
+
+	if (total % rl->term_width == 0)
+		final_x = rl->term_width - 1;
+	else
+		final_x = total % rl->term_width;
+	return rl->x - final_x;
+}
+
+static int	compute_vertical_offset(t_rl *rl, int len_to_write) {
+	int	total = len_to_write + rl->x;
+
+	if (total % rl->term_width == 0)
+		return (total / rl->term_width) - 1;
+	else
+		return total / rl->term_width;
+}
+
+static void	wrapper_delete(t_rl *rl) {
+	int	y_offset = compute_vertical_offset(rl, rl->len - rl->idx + 1);
+	
+	write(2, "\x1b[0K", 4);
+	for (int i = 0; i < y_offset; i++) {
+		write(2, "\x1b[B", 3);
+		write(2, "\x1b[2K", 4);
+	}
+	if (y_offset > 0)
+		dprintf(2, "\x1b[%dA", y_offset);
+}
+
+static void	wrapper_write(t_rl *rl) {
+	int		len_to_write = rl->len - rl->idx;
+	int		x_offset = compute_horizontal_offset(rl, len_to_write);
+	int		y_offset = compute_vertical_offset(rl, len_to_write);
+	int		bit_len;
+	char	*temp = rl->line + rl->idx;
+
+	if (len_to_write + rl->x > rl->term_width)
+		bit_len = rl->term_width - rl->x;
+	else
+		bit_len = len_to_write;
+	do {
+		write(2, temp, bit_len);
+		len_to_write -= bit_len;
+		temp += bit_len;
+		if (len_to_write)
+			write(2, "\v\r", 2);
+		bit_len = len_to_write > rl->term_width ? rl->term_width : len_to_write;
+	} while (len_to_write);
+	//if (x_offset == 0 && y_offset <= 0)
+	//	return ;
+	if (y_offset > 0)
+		dprintf(2, "\x1b[%dA", y_offset);
+	if (x_offset > 0)
+		dprintf(2, "\x1b[%dC", x_offset);
+	else if (x_offset < 0)
+		dprintf(2, "\x1b[%dD", -x_offset);
+}
+
+//TODO handle wrapping properly on rewwrite
+static void	replace_line(t_rl *rl, char *replacement) {
+	int	temp;
+
+	temp = rl->idx;
+	while (temp > 0) {
+		write(2, "\x1b[D", 3);
+		temp--;
+	}
+	dprintf(2, "\x1b[%dP", rl->len);
+	rl->len = strlen(replacement);
+	memcpy(rl->line, replacement, rl->len);
+	rl->idx = rl->len;
+	rl->x = rl->prompt_len + rl->len - 1;
+	write(2, rl->line, rl->len);
+}
+
+static void	replace_from_history(t_rl *rl, t_tshoo_hist **history, char cmd) {
+	char	*replacement;
+
+	if (*history == NULL)
+		return ;
+	if (cmd == 'A' && (*history)->prev)
+		*history = (*history)->prev;
+	else if (cmd == 'B' && (*history)->next)
+		*history = (*history)->next;
+	else
+		return ;
+	if (!(*history)->line)
+		return ;
+	replacement = (*history)->line;
+	replace_line(rl, replacement);
 }
 
 static void	arrow_handling(t_rl *rl, t_tshoo_hist **history) {
