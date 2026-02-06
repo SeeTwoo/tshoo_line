@@ -26,22 +26,6 @@ void	enable_raw_mode(t_settings *original);
 void	disable_raw_mode(t_settings *original);
 void	tshoo_completion(t_rl *rl);
 
-static void	fill_command(char *cmd_buf, char *cmd) {
-	int	idx;
-
-	idx = 0;
-	while (1) {
-		if (read(0, &cmd_buf[idx], 1) == 0)
-			continue ;
-		if (isalpha(cmd_buf[idx]))
-			break ;
-		idx++;
-	}
-	*cmd = cmd_buf[idx];
-	idx++;
-	cmd_buf[idx] = '\0';
-}
-
 static void	cursor_forward(t_rl *rl) {
 	if (rl->idx >= rl->len)
 		return ;
@@ -69,6 +53,22 @@ static void	cursor_backward(t_rl *rl) {
 	}
 }
 
+static void	fill_command(char *cmd_buf, char *cmd) {
+	int	idx;
+
+	idx = 0;
+	while (1) {
+		if (read(0, &cmd_buf[idx], 1) == 0)
+			continue ;
+		if (isalpha(cmd_buf[idx]))
+			break ;
+		idx++;
+	}
+	*cmd = cmd_buf[idx];
+	idx++;
+	cmd_buf[idx] = '\0';
+}
+
 static int	compute_horizontal_offset(t_rl *rl, int len_to_write) {
 	int	total = len_to_write + rl->x;
 	int	final_x;
@@ -89,6 +89,19 @@ static int	compute_vertical_offset(t_rl *rl, int len_to_write) {
 		return total / rl->term_width;
 }
 
+static void	move_cursor(int x, int y) {
+	if (x > 0)
+		dprintf(2, "\x1b[%dC", x);
+	else if (x < 0)
+		dprintf(2, "\x1b[%dD", -x);
+	if (y > 0)
+		dprintf(2, "\x1b[%dA", y);
+	else if (y < 0)
+		dprintf(2, "\x1b[%dB", -y);
+}
+
+/*
+*/
 static void	wrapper_delete(t_rl *rl) {
 	int	y_offset = compute_vertical_offset(rl, rl->len - rl->idx + 1);
 	
@@ -99,35 +112,6 @@ static void	wrapper_delete(t_rl *rl) {
 	}
 	if (y_offset > 0)
 		dprintf(2, "\x1b[%dA", y_offset);
-}
-
-static void	wrapper_write(t_rl *rl) {
-	int		len_to_write = rl->len - rl->idx;
-	int		x_offset = compute_horizontal_offset(rl, len_to_write);
-	int		y_offset = compute_vertical_offset(rl, len_to_write);
-	int		bit_len;
-	char	*temp = rl->line + rl->idx;
-
-	if (len_to_write + rl->x > rl->term_width)
-		bit_len = rl->term_width - rl->x;
-	else
-		bit_len = len_to_write;
-	do {
-		write(2, temp, bit_len);
-		len_to_write -= bit_len;
-		temp += bit_len;
-		if (len_to_write)
-			write(2, "\v\r", 2);
-		bit_len = len_to_write > rl->term_width ? rl->term_width : len_to_write;
-	} while (len_to_write);
-	//if (x_offset == 0 && y_offset <= 0)
-	//	return ;
-	if (y_offset > 0)
-		dprintf(2, "\x1b[%dA", y_offset);
-	if (x_offset > 0)
-		dprintf(2, "\x1b[%dC", x_offset);
-	else if (x_offset < 0)
-		dprintf(2, "\x1b[%dD", -x_offset);
 }
 
 //TODO handle wrapping properly on rewwrite
@@ -179,11 +163,18 @@ static void	arrow_handling(t_rl *rl, t_tshoo_hist **history) {
 
 static void	fill_line(t_rl *rl, char c) {
 	char	*current = rl->line + rl->idx;
+	int		trailing = rl->len - rl->idx;
+	int		x_offset;
+	int		y_offset;
 
-	memmove(current + 1, current,  rl->len - rl->idx);
+	memmove(current + 1, current, trailing);
 	*current = c;
 	rl->len++;
-	wrapper_write(rl);
+	trailing++;
+	write(2, current, trailing);
+	x_offset = compute_horizontal_offset(rl, trailing);
+	y_offset = compute_vertical_offset(rl, trailing);
+	move_cursor(x_offset, y_offset);
 	cursor_forward(rl);
 }
 
@@ -191,13 +182,19 @@ static void	backspace_handling(t_rl *rl) {
 	if (rl->idx <= 0)
 		return ;
 
-	char	*current = rl->line + rl->idx;
+	char	*current = rl->line + rl->idx - 1;
+	int		trailing = rl->len - rl->idx;
+	int		x_offset;
+	int		y_offset;
 
-	memmove(current - 1, current, rl->len - rl->idx);
-	cursor_backward(rl);
+	memmove(current, current + 1, trailing);
 	rl->len--;
+	cursor_backward(rl);
 	wrapper_delete(rl);
-	wrapper_write(rl);
+	write(2, current, trailing);
+	x_offset = compute_horizontal_offset(rl, trailing);
+	y_offset = compute_vertical_offset(rl, trailing);
+	move_cursor(x_offset, y_offset);
 }
 
 static void	control_c(t_rl *rl) {
