@@ -100,20 +100,6 @@ static void	move_cursor(int x, int y) {
 		dprintf(2, "\x1b[%dB", -y);
 }
 
-/*
-*/
-static void	wrapper_delete(t_rl *rl) {
-	int	y_offset = compute_vertical_offset(rl, rl->len - rl->idx + 1);
-	
-	write(2, "\x1b[0K", 4);
-	for (int i = 0; i < y_offset; i++) {
-		write(2, "\x1b[B", 3);
-		write(2, "\x1b[2K", 4);
-	}
-	if (y_offset > 0)
-		dprintf(2, "\x1b[%dA", y_offset);
-}
-
 //TODO handle wrapping properly on rewwrite
 static void	replace_line(t_rl *rl, char *replacement) {
 	int	temp;
@@ -178,6 +164,24 @@ static void	fill_line(t_rl *rl, char c) {
 	cursor_forward(rl);
 }
 
+static void	wrapper_delete(t_rl *rl) {
+	int	to_delete = rl->x + rl->len - rl->idx;
+	int	y_offset;
+
+	if (to_delete % rl->term_width == 0)
+		y_offset = (to_delete / rl->term_width) - 1;
+	else
+		y_offset = to_delete / rl->term_width;
+	
+	write(2, "\x1b[0K", 4);
+	for (int i = 0; i < y_offset; i++) {
+		write(2, "\x1b[B", 3);
+		write(2, "\x1b[2K", 4);
+	}
+	if (y_offset > 0)
+		dprintf(2, "\x1b[%dA", y_offset);
+}
+
 static void	backspace_handling(t_rl *rl) {
 	if (rl->idx <= 0)
 		return ;
@@ -188,9 +192,9 @@ static void	backspace_handling(t_rl *rl) {
 	int		y_offset;
 
 	memmove(current, current + 1, trailing);
-	rl->len--;
 	cursor_backward(rl);
 	wrapper_delete(rl);
+	rl->len--;
 	write(2, current, trailing);
 	x_offset = compute_horizontal_offset(rl, trailing);
 	y_offset = compute_vertical_offset(rl, trailing);
